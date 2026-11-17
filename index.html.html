@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10131d">
+  <title>MeetLove • BLE Test</title>
+  <style>
+    :root {color-scheme:dark;--bg:#10131d;--panel:#1b2030;--panel2:#23293a;--text:#f5f5fb;--muted:#a1a6bd;--purple:#ab69ff;--purple2:#6a51d9;--line:#333a4e;--green:#6de1a5;--red:#ff7e90}
+    *{box-sizing:border-box}
+    html{-webkit-text-size-adjust:100%}
+    body{margin:0;background:radial-gradient(circle at 70% -15%,#403264 0,transparent 48%),var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+    .wrap{max-width:560px;margin:0 auto;padding:25px 18px 46px}
+    header{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+    .logo{width:55px;height:55px;display:grid;place-items:center;border-radius:17px;background:linear-gradient(135deg,#4cc6d7,#ad68fd 65%,#f66da3);font-weight:800;font-size:20px;color:#fff;box-shadow:0 8px 25px #0005}
+    h1{font-size:25px;letter-spacing:-.5px;margin:0}
+    .subtitle{font-size:13px;color:var(--muted);margin-top:4px}
+    .card{border-radius:22px;background:var(--panel);border:1px solid #ffffff0d;padding:20px;margin:15px 0;box-shadow:0 7px 30px #0002}
+    .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .state{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--muted)}
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 0 3px #ff7e9019}
+    .dot.ok{background:var(--green);box-shadow:0 0 0 3px #6de1a525}
+    .device{font-size:22px;font-weight:700;margin:17px 0 3px}
+    .small{font-size:13px;color:var(--muted);line-height:1.55}
+    button{appearance:none;border:0;cursor:pointer;min-height:46px;font-weight:700;font-size:15px;border-radius:13px;padding:12px 15px;color:#fff;background:var(--panel2);font-family:inherit;touch-action:manipulation}
+    button:disabled{opacity:.40;cursor:not-allowed}
+    .primary{background:linear-gradient(115deg,var(--purple2),var(--purple));width:100%;margin-top:18px}
+    .buttonrow{display:flex;gap:10px;margin-top:10px}
+    .buttonrow button{flex:1}
+    .secondary{background:#34304d}
+    .outline{background:transparent;border:1px solid #5e536f}
+    h2{font-size:17px;margin:0 0 14px;letter-spacing:-.15px}
+    .metric{background:var(--panel2);border-radius:14px;padding:13px 14px;margin:8px 0}
+    .metric .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .metric .value{font:600 16px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-word}
+    .modeGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .modeGrid button{min-height:60px}
+    .disabledNotice{font-size:12px;line-height:1.55;color:#d8c1fa;background:#49335b66;padding:12px 14px;border-radius:12px;margin-bottom:13px}
+    pre{background:#0d111c;border:1px solid #30354b;border-radius:12px;min-height:165px;max-height:300px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;font-size:12px;line-height:1.65;color:#c9d4e7}
+    .foot{font-size:12px;color:var(--muted);text-align:center;margin-top:25px;line-height:1.6}
+    .pill{font-size:11px;border:1px solid #60516e;color:#e1d0fa;padding:4px 8px;border-radius:18px;white-space:nowrap}
+    .warn{color:#f3dca6}
+    #error{display:none;color:#ffd9df;background:#4b2731;padding:12px;border-radius:12px;margin-top:12px;font-size:13px;white-space:pre-wrap}
+    .spacer{height:5px}
+  </style>
+</head>
+<body>
+<main class="wrap">
+<header><div class="logo">ML</div><div><h1>MeetLove BLE</h1><div class="subtitle">Prototip de conectare • iPhone</div></div></header>
+<section class="card">
+  <div class="row"><div class="state"><span id="dot" class="dot"></span><span id="state">Neconectat</span></div><span class="pill">BLE local</span></div>
+  <div id="device" class="device">Niciun dispozitiv</div>
+  <div class="small">Conectarea are loc direct între telefon și produs. Nu folosește serverele MeetLove.</div>
+  <button id="connect" class="primary">Caută și conectează MeetLove</button>
+  <div class="buttonrow"><button id="connectAll" class="outline">Caută toate BLE</button><button id="disconnect" class="secondary" disabled>Deconectează</button></div>
+  <div id="error"></div>
+</section>
+<section class="card">
+  <div class="row"><h2>Diagnostic Bluetooth</h2><span id="gattPill" class="pill">Neconectat</span></div>
+  <div class="metric"><div class="label">Nume dispozitiv (FFF4)</div><div id="nameValue" class="value">—</div></div>
+  <div class="metric"><div class="label">Date FFF5 (HEX)</div><div id="fff5Value" class="value">—</div></div>
+  <div class="metric"><div class="label">Date FF02 (HEX)</div><div id="ff02Value" class="value">—</div></div>
+  <div class="metric"><div class="label">Caracteristici descoperite</div><div id="chars" class="small">—</div></div>
+  <button id="read" class="primary" disabled>Citește datele</button>
+  <div class="buttonrow"><button id="notify" class="secondary" disabled>Activează Notify</button></div>
+  <div class="small" style="margin-top:11px">FFF5 a returnat anterior 56 00 pe dispozitivul tău. Nu presupunem că valoarea reprezintă bateria.</div>
+</section>
+<section class="card">
+  <h2>Control</h2>
+  <div class="disabledNotice">Comenzile Bluetooth pentru pornire, oprire și intensitate nu sunt încă identificate. Butoanele sunt dezactivate intenționat; nu vom trimite comenzi HEX inventate.</div>
+  <div class="modeGrid"><button disabled>▶ Pornește</button><button disabled>■ Oprește</button><button disabled>Mod 1</button><button disabled>Mod 2</button></div>
+</section>
+<section class="card">
+  <div class="row"><h2>Jurnal BLE</h2><button id="clear" style="min-height:34px;padding:7px 12px;font-size:12px">Curăță</button></div>
+  <pre id="log" aria-live="polite"></pre>
+  <div class="buttonrow"><button id="copyLog" class="outline">Copiază jurnalul</button></div>
+</section>
+<div class="foot">Versiune experimentală, doar citire • Fără cont, fără reclame, fără trimiterea datelor către internet.<br>Folosește Bluefy pe iPhone, pe o pagină HTTPS.</div>
+</main>
+<script>
+'use strict';
+const UUID = {
+  service: 0xFFF0,
+  fff3: 0xFFF3,
+  fff4: 0xFFF4,
+  fff5: 0xFFF5,
+  service2: '02f00000-0000-0000-0000-00000000fe00',
+  ff01: '02f00000-0000-0000-0000-00000000ff01',
+  ff02: '02f00000-0000-0000-0000-00000000ff02'
+};
+const $ = (id) => document.getElementById(id);
+let device = null, server = null, characteristics = {}, notifying = false, busy = false;
+const logs = [];
+
+function addLog(message) {
+  const time = new Date().toLocaleTimeString('ro-RO', {hour12:false});
+  logs.push(`[${time}] ${message}`);
+  if(logs.length > 100) logs.shift();
+  $('log').textContent = logs.join('\n');
+  $('log').scrollTop = $('log').scrollHeight;
+}
+function showError(message) { $('error').style.display='block'; $('error').textContent=message; addLog('EROARE: '+message); }
+function clearError(){ $('error').style.display='none'; $('error').textContent=''; }
+function renderStatus(connected) {
+  $('state').textContent = connected ? 'Conectat' : 'Neconectat';
+  $('dot').classList.toggle('ok', connected);
+  $('gattPill').textContent = connected ? 'GATT activ' : 'Neconectat';
+  $('connect').disabled = connected || busy;
+  $('connectAll').disabled = connected || busy;
+  $('disconnect').disabled = !connected;
+  $('read').disabled = !connected;
+  $('notify').disabled = !connected;
+  if(!connected) $('notify').textContent='Activează Notify';
+}
+function hex(view){if(!view) return '—'; const arr = view instanceof DataView ? new Uint8Array(view.buffer,view.byteOffset,view.byteLength) : new Uint8Array(view); return Array.from(arr,b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ') || '(gol)';}
+function ascii(view){ const arr = new Uint8Array(view.buffer,view.byteOffset,view.byteLength); return Array.from(arr,b=>b >= 32 && b <= 126 ? String.fromCharCode(b) : '').join('') || '(nu este text)';}
+function onDisconnect(){ server=null; characteristics={}; notifying=false; $('chars').textContent='—'; renderStatus(false); addLog('Dispozitiv deconectat.'); }
+async function characteristic(service, id, label) {
+  try {const c=await service.getCharacteristic(id); characteristics[label]=c;addLog('Descoperit '+label+' ['+Object.entries(c.properties).filter(([k,v])=>v===true).map(([k])=>k).join(', ')+']');return c;}
+  catch(e){addLog(label+' indisponibil: '+(e.message||String(e)));return null;}
+}
+async function discover() {
+  const found=[];
+  try {
+    const service=await server.getPrimaryService(UUID.service);
+    found.push('FFF0');
+    await characteristic(service,UUID.fff3,'FFF3');
+    await characteristic(service,UUID.fff4,'FFF4');
+    await characteristic(service,UUID.fff5,'FFF5');
+  } catch(e){addLog('Serviciul FFF0 indisponibil: '+(e.message||String(e)));}
+  try {
+    const service2=await server.getPrimaryService(UUID.service2);
+    found.push('02F…FE00');
+    await characteristic(service2,UUID.ff01,'FF01');
+    await characteristic(service2,UUID.ff02,'FF02');
+  } catch(e){addLog('Serviciul 02F…FE00 indisponibil: '+(e.message||String(e)));}
+  $('chars').textContent = Object.keys(characteristics).join(' · ') || 'Nu s-au putut descoperi caracteristici';
+  if(found.length) addLog('Servicii accesate: '+found.join(', '));
+}
+async function connect(allDevices=false){
+  if(busy) return;
+  clearError();
+  if(!navigator.bluetooth){showError('Acest browser nu are Web Bluetooth. Pe iPhone deschide pagina în Bluefy (nu în Safari).');return;}
+  busy=true;renderStatus(false);
+  try {
+    addLog('Deschid lista de dispozitive Bluetooth…');
+    const opts=allDevices ? {acceptAllDevices:true,optionalServices:[UUID.service,UUID.service2]} : {filters:[{namePrefix:'MeetLove'}],optionalServices:[UUID.service,UUID.service2]};
+    device=await navigator.bluetooth.requestDevice(opts);
+    device.addEventListener('gattserverdisconnected',onDisconnect);
+    $('device').textContent = device.name || 'Dispozitiv fără nume';
+    addLog('Selectat: '+(device.name||'(fără nume)'));
+    server=await device.gatt.connect();
+    addLog('Conexiune GATT reușită.');
+    await discover();
+    if(Object.keys(characteristics).length===0) showError('Conectat, dar nu pot accesa serviciile. Verifică UUID-urile / suportul Bluefy.');
+    await readData();
+  } catch(e){
+    const msg=e && e.message ? e.message : String(e);
+    if(e.name==='NotFoundError') addLog('Niciun dispozitiv selectat / căutare anulată.');
+    else showError(msg);
+    if(!device?.gatt?.connected) onDisconnect();
+  } finally {busy=false;renderStatus(!!device?.gatt?.connected);}
+}
+async function readOne(label, outId, decoder) {
+  const c=characteristics[label];
+  if(!c){$(outId).textContent='Indisponibil';return;}
+  try{const val=await c.readValue(); const data=decoder ? decoder(val) : hex(val);$(outId).textContent=data;addLog('Read '+label+': '+hex(val));}
+  catch(e){$(outId).textContent='Eroare la citire';addLog('Read '+label+' a eșuat: '+(e.message||String(e)));}
+}
+async function readData(){
+  if(!device?.gatt?.connected) return;
+  await readOne('FFF4','nameValue',ascii);
+  await readOne('FFF5','fff5Value');
+  await readOne('FF02','ff02Value');
+}
+function onNotify(label,outId,ev){ const value=hex(ev.target.value); if(outId) $(outId).textContent=value; addLog('Notify '+label+': '+value); }
+async function enableNotify(){
+  if(notifying) {addLog('Notify este deja activ.');return;}
+  let count=0;
+  for(const [label,outId] of [['FFF5','fff5Value'],['FF02','ff02Value']]) {
+    const c=characteristics[label];
+    if(!c || !c.properties.notify) continue;
+    try{c.addEventListener('characteristicvaluechanged', ev=>onNotify(label,outId,ev)); await c.startNotifications();addLog('Notify activat pentru '+label);count++;}
+    catch(e){addLog('Notify '+label+' nu a pornit: '+(e.message||String(e)));}
+  }
+  notifying=count>0;
+  $('notify').textContent=notifying?'Notify activ ('+count+')':'Notify indisponibil';
+}
+$('connect').addEventListener('click',()=>connect(false));
+$('connectAll').addEventListener('click',()=>connect(true));
+$('disconnect').addEventListener('click',()=>{if(device?.gatt?.connected)device.gatt.disconnect();else onDisconnect();});
+$('read').addEventListener('click',async()=>{clearError();await readData();});
+$('notify').addEventListener('click',async()=>{clearError();await enableNotify();});
+$('clear').addEventListener('click',()=>{logs.length=0;$('log').textContent='';addLog('Jurnal curățat.');});
+$('copyLog').addEventListener('click',async()=>{
+  const text=logs.join('\n');
+  try {await navigator.clipboard.writeText(text); addLog('Jurnal copiat.');}
+  catch(e){window.prompt('Copiază jurnalul:',text);}
+});
+renderStatus(false);
+addLog('Prototip pregătit. Pornește dispozitivul și conectează-te folosind Bluefy.');
+</script>
+</body>
+</html>
